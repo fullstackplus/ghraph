@@ -222,9 +222,9 @@ describe Graph do
     end
   end
 
-#..........................................................................................
-#.......................................PATH API TESTS.....................................
-#..........................................................................................
+ #..........................................................................................
+ #.......................................PATH API TESTS.....................................
+ #..........................................................................................
 
   describe "Path API" do
     before do 
@@ -252,6 +252,10 @@ describe Graph do
     end
     it "must return a list of edges when a path between the given nodes consists of those edges (recursive case)" do 
       @graph.path(@a, @d).must_equal [@ab, @bc, @cd]
+    end
+    it "must treat a cycle as a regular path (recursive case)" do 
+      @ca = @graph.add_edge(@c, @a)
+      @graph.path(@a, @a).must_equal [@ab, @bc, @ca]
     end
     
   end
