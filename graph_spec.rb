@@ -30,27 +30,23 @@ class Graph
     @nodes = {}
     @edges = {}
   end
+  
   #..........................................................................................
   #.........................................CORE ADT.........................................
   #..........................................................................................
-  #true / false like a Ruby Hash
+  
   def has_node?(node_name)
     @nodes.has_key? node_name.downcase
   end
   
-  #return value is the elem like in a Ruby Hash
   def add_node(node)
     @nodes.store(node.id, node)
   end
   
-  #return value is the elem like in a Ruby Hash. If elem does not exist return value is nil. 
-  #Wait, this is stupid. It should be false not nil which is "falsey". How do we say:
-  #if we deleted unsuccessfully, do this and not if the return value is nil do this?
   def delete_node(node)
     @nodes.delete node.id
   end
   
-  #if given nodes exist, add an edge between them
   def add_edge(from_node, to_node) 
     return false if !(has_node?(from_node.name) && has_node?(to_node.name)) #false or nil?
     e = Edge.new(from_node, to_node)
@@ -72,14 +68,41 @@ class Graph
     id = [from_node.id, "_", to_node.id].join
     @edges[id]
   end
+  
   #..........................................................................................
-  #.......................................EXTRA METHODS......................................
+  #.........................................PATH API.........................................
   #..........................................................................................
+  
+  require 'pry'
+  
+  def path(from_node, to_node, edges=[])
+    edge = adjacent?(from_node, to_node)
+    return edges + [edge] if edge
+    neighbors(from_node).each do |node| 
+      edges = edges + [adjacent?(from_node, node)]
+      p = path(node, to_node, edges)
+      return p if p
+    end
+    nil
+  end
+  
+  def paths(from_node, to_node)
+  end
+  
+  def shortest_path_by_attribute(from_node, to_node, atb)
+  end
   
 end
 
+
+
+
 require 'minitest/spec'
 require 'minitest/autorun'
+
+#..........................................................................................
+#.................................OBJECT INITIALIZATION TESTS..............................
+#..........................................................................................
 
 describe Node do
   before do
@@ -108,6 +131,10 @@ describe Node do
     end
   end
 end
+
+#..........................................................................................
+#.......................................CORE ADT TESTS.....................................
+#..........................................................................................
 
 describe Graph do
   before do
@@ -195,6 +222,39 @@ describe Graph do
     end
   end
 
+#..........................................................................................
+#.......................................PATH API TESTS.....................................
+#..........................................................................................
+
+  describe "Path API" do
+    before do 
+      @a = Node.new 'A'
+      @b = Node.new 'B'
+      @c = Node.new 'C'
+      @d = Node.new 'D'
+      @e = Node.new 'E'
+      @graph.add_node @a
+      @graph.add_node @b
+      @graph.add_node @c
+      @graph.add_node @d
+      @graph.add_node @e
+      @ab = @graph.add_edge(@a, @b)
+      @ac = @graph.add_edge(@a, @c)
+      @bc = @graph.add_edge(@b, @c)
+      @cd = @graph.add_edge(@c, @d)
+    end
+    it "must return nil if no path exists between the given edges" do 
+      @graph.path(@a, @e).must_equal nil
+    end
+    it "must return a list of one edge when a path between the given nodes is that edge (base case)" do
+      @graph.path(@a, @b).must_equal [@ab]
+      @graph.path(@a, @c).must_equal [@ac] #the straight way of getting from A to C - not via B
+    end
+    it "must return a list of edges when a path between the given nodes consists of those edges (recursive case)" do 
+      @graph.path(@a, @d).must_equal [@ab, @bc, @cd]
+    end
+    
+  end
 end
 
 
