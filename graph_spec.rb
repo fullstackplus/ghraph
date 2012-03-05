@@ -87,9 +87,33 @@ class Graph
   end
   
   def paths(from_node, to_node)
+    @paths = []
+    edge = adjacent?(from_node, to_node)
+    @paths << [edge] if edge  
+    neighbors(from_node).each do |node|       
+      edge = [adjacent?(from_node, node)]    
+      edge = nil if from_node.id.eql? node.id
+      p = path(node, to_node) 
+      if p && edge
+        p = edge + p
+        @paths << p
+      end
+    end
+    return @paths if !@paths.empty? 
+    nil
   end
   
-  def shortest_path_by_attribute(from_node, to_node, atb)
+  def cost_of_path(path, attrib)
+    #return nil if Edge.respond_to? attrib
+    #puts Edge.respond_to?(attrib).to_s + " IS IT?"
+    #AttributeNotDefinedException
+    path.map {|edge| edge.send(attrib)}.reduce {|acc, value| acc + value}
+  end
+  
+  def shortest_path(from_node, to_node, attrib)
+    paths = paths(from_node, to_node)
+    costs = paths.map {|path| cost_of_path(path, attrib)}
+    paths[costs.index(costs.min)]
   end
   
 end
@@ -243,8 +267,9 @@ describe Graph do
       @bc = @graph.add_edge(@b, @c)
       @cd = @graph.add_edge(@c, @d)
     end
-    it "must return nil if no path exists between the given edges" do 
+    it "must return nil if no path exists between the given nodes" do 
       @graph.path(@a, @e).must_equal nil
+      @graph.path(@d, @a).must_equal nil
     end
     it "must return a list of one edge when a path between the given nodes is that edge (base case)" do
       @graph.path(@a, @b).must_equal [@ab]
@@ -257,10 +282,81 @@ describe Graph do
       @ca = @graph.add_edge(@c, @a)
       @graph.path(@a, @a).must_equal [@ab, @bc, @ca]
     end
+    it "must treat a self-cycle as a regular path (base case)" do 
+      @aa = @graph.add_edge(@a, @a)
+      @graph.path(@a, @a).must_equal [@aa]
+    end
+    it "must return nil when no paths exist between the two given nodes" do 
+      @graph.paths(@a, @e).must_equal nil
+      @graph.paths(@d, @a).must_equal nil
+    end
+    it "must return a list including all paths between the two given nodes (base case)" do 
+       @graph.paths(@a, @b).must_equal [[@ab]]
+    end
+    it "must return a list including all paths between the two given nodes (more than one path)" do 
+      @graph.paths(@a, @c).must_equal [[@ac], [@ab, @bc]]
+      @graph.paths(@a, @d).must_equal [[@ab, @bc, @cd], [@ac, @cd]]
+    end
+    it "must return a list including all paths to the node - when they are self-cycles" do 
+      @aa = @graph.add_edge(@a, @a)
+      @graph.paths(@a, @a).must_equal [[@aa]]
+    end
+    it "must return a list including all paths to the node - when they are cycles" do 
+      @aa = @graph.add_edge(@a, @a)
+      @da = @graph.add_edge(@d, @a)
+      @graph.paths(@a, @a).must_equal [[@aa], [@ab, @bc, @cd, @da], [@ac, @cd, @da]]
+    end    
+    describe "Shortest path testing" do
+      before do
+        class Edge
+          attr_accessor :weight
+        end
+        #long cheap path
+        @ab.weight = 1
+        @bc.weight = 2
+        @cd.weight = 3
+        #short expensive path
+        @ac.weight = 5    
+      end
+      it "must compute cost of one path" do
+        path = [@ab, @bc, @cd]
+        @graph.cost_of_path(path, :weight).must_equal 6
+      end
+      it "must return false when an unknown attribute is passed to cost function" do
+        #TODO. Custom exception class appropriate here 
+      end
+      it "must compute the cheapest of given paths" do
+          paths = @graph.paths(@a, @d)
+          @graph.shortest_path(@a, @d, :weight).must_equal [@ab, @bc, @cd]  
+          @ad = @graph.add_edge(@a, @d)
+          @ad.weight = 1  
+          @graph.shortest_path(@a, @d, :weight).must_equal [@ad]    
+      end
+    end
     
   end
 end
 
+
+=begin
+[
+  [
+    [#<Edge:0x007fc962a05428 @to="B", @from="A", @id="a_b", @weight=1>, 
+     #<Edge:0x007fc962a04ac8 @to="C", @from="B", @id="b_c", @weight=2>, 
+     #<Edge:0x007fc962a046b8 @to="D", @from="C", @id="c_d", @weight=3>
+    ], 
+    [6]
+  ], 
+  
+  [
+    [#<Edge:0x007fc962a04fa0 @to="C", @from="A", @id="a_c", @weight=5>, 
+     #<Edge:0x007fc962a046b8 @to="D", @from="C", @id="c_d", @weight=3>
+    ], 
+    [8]
+  ]
+]
+
+=end
 
 =begin
 A -> B
