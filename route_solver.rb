@@ -165,7 +165,7 @@ describe "RouteSolver" do
       z = @long.node 'Z'
       path = @long.shortest_path(a, z, :price)
       #OMG. I was being a dumbass. Bad idea storing edges as unique strings of x, y
-      puts @long.edges.to_s
+      #puts @long.edges.to_s
       @long.edges.size.must_equal 7
       path.size.must_equal 3
       path.map {|edge| edge.id}.must_equal ['a_b', 'b_c', 'c_z']
