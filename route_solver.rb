@@ -1,9 +1,9 @@
-require './lib/graph_spec.rb'
+#require './lib/graph_spec.rb'
 
 class RouteSolver
   
   def initialize(file)
-    #collect_graphs(parse_file(file, process_indices(file)))
+    
   end
   
   #private
@@ -45,37 +45,21 @@ class RouteSolver
       end
       routes << route
     end
-    create_attributes @params
     routes
   end
   
-  def create_attributes(params)
-    params.keys.each do |k|
-      Edge.class_eval {attr_accessor k.to_sym}
+  def create_paths(arr, from, to)
+    @s = arr.map do |hash|
+      hash.select {hash["from"] == from}
     end
+    @s = @s.reject{|h| h == {}}
+    puts "HERE IS SET: " + @s.to_s
+    
+    @q = @s.map {|hash| hash.select {hash["to"] == to}}
+    @q = @q.reject{|h| h == {}}
+    puts "HERE IS THE SECOND SET: " + @q.to_s
+    puts "HERE IS DIFFEFRING SET: " + "#{@s - @q} "
   end
-  
-  #create graph objects from raw data structures
-  def collect_graphs(routes)
-    routes.map do |route|
-      initialize_graph(route)
-    end
-  end 
-  
-  def initialize_graph(route)
-    @g = Graph.new
-    route.each do |attrs|
-      from_node = Node.new attrs["from"]
-      to_node = Node.new attrs["to"]
-      @g.add_node from_node
-      @g.add_node to_node
-      edge = @g.add_edge(from_node, to_node)
-      attrs.each do |k, v|
-        eval "edge.#{k} = v" unless edge.send k
-      end
-    end
-    @g
-  end  
   
 end
 
@@ -112,83 +96,15 @@ describe "RouteSolver" do
       )
     end
   end
-  describe "graph initialization" do
-    before do
-      @graph = @solver.initialize_graph(
-        [
-          {"from" => "A", "to" => "B", "dep" => "09:00", "arr" => "10:00", "price" => "100.00"},
-          {"from" => "B", "to" => "Z", "dep" => "11:30", "arr" => "13:30", "price" => "100.00"},
-          {"from" => "A", "to" => "Z", "dep" => "10:00", "arr" => "12:00", "price" => "300.00"}
-        ])
+  describe "" do
+    it "must do foo" do
+      @solver.create_paths(@params[0], 'A', 'Z')
     end
-    it "must create a graph responding to the right methods" do 
-      @graph.edges.size.must_equal 3
-      @graph.edges["a_b"].dep.must_equal "09:00"
-      @graph.edges["a_z"].price.must_equal "300.00"
-    end
-    it "must have a collection containing 2 graphs" do 
-      @graphs = @solver.collect_graphs(@params)
-      @graphs.size.must_equal 2
-      ab = @graphs[0].edge('A', 'B')
-      ab.wont_be_nil
-      ab.id.must_equal 'a_b'
-    end 
-  end  
-  describe "compute cheapest route by price" do
-    before do
-      @short = @solver.initialize_graph(
-        [
-          {"from" => "A", "to" => "B", "dep" => "09:00", "arr" => "10:00", "price" => "100.00"},
-          {"from" => "B", "to" => "Z", "dep" => "11:30", "arr" => "13:30", "price" => "100.00"},
-          {"from" => "A", "to" => "Z", "dep" => "10:00", "arr" => "12:00", "price" => "300.00"}
-        ])
-      @long = @solver.initialize_graph(
-        [
-          {"from" => "A", "to" => "B", "dep" => "08:00", "arr" => "09:00", "price" => "50.00"},
-          {"from" => "A", "to" => "B", "dep" => "12:00", "arr" => "13:00", "price" => "300.00"},
-          {"from" => "A", "to" => "C", "dep" => "14:00", "arr" => "15:30", "price" => "175.00"},
-          {"from" => "B", "to" => "C", "dep" => "10:00", "arr" => "11:00", "price" => "75.00"},
-          {"from" => "B", "to" => "Z", "dep" => "15:00", "arr" => "16:30", "price" => "250.00"},
-          {"from" => "C", "to" => "B", "dep" => "15:45", "arr" => "16:45", "price" => "50.00"},
-          {"from" => "C", "to" => "Z", "dep" => "16:00", "arr" => "19:00", "price" => "100.00"}
-        ])
-    end
-    it "must return the path A, B, Z for the short route" do 
-      a = @short.node 'A'
-      z = @short.node 'Z'
-      path = @short.shortest_path(a, z, :price)
-      path.size.must_equal 2
-      path.map {|edge| edge.id}.must_equal ['a_b', 'b_z']
-    end
-    it "must return the path A, B, C, Z for the long route" do 
-      a = @long.node 'A'
-      z = @long.node 'Z'
-      path = @long.shortest_path(a, z, :price)
-      #OMG. I was being a dumbass. Bad idea storing edges as unique strings of x, y
-      #puts @long.edges.to_s
-      @long.edges.size.must_equal 7
-      path.size.must_equal 3
-      path.map {|edge| edge.id}.must_equal ['a_b', 'b_c', 'c_z']
-    end
+   
   end
 end
 
 =begin
 #route = false if line.match /^\s/
 #line.match(/^[A-Z]/) ? data = true : data = false
-=end
-
-
-=begin
-describe Graph do
-  before do
-    @graph = Graph.new
-  end
-  describe "brand new object" do
-    it "must contain two hashes" do
-      @graph.nodes.must_equal Hash.new
-      @graph.edges.must_equal Hash.new
-    end
-  end
-end
 =end
