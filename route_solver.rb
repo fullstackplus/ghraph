@@ -3,7 +3,6 @@
 class RouteSolver
   
   def initialize(file)
-    
   end
   
   #private
@@ -49,16 +48,27 @@ class RouteSolver
   end
   
   def create_paths(arr, from, to)
-    @s = arr.map do |hash|
-      hash.select {hash["from"] == from}
+    arr.map do |str|
+      last = str[str.size-1]
+      adj = arr.select {|str| str[0]==last}
+      [str] + adj
     end
-    @s = @s.reject{|h| h == {}}
-    puts "HERE IS SET: " + @s.to_s
-    
-    @q = @s.map {|hash| hash.select {hash["to"] == to}}
-    @q = @q.reject{|h| h == {}}
-    puts "HERE IS THE SECOND SET: " + @q.to_s
-    puts "HERE IS DIFFEFRING SET: " + "#{@s - @q} "
+  end
+  
+  def foo(arr, from, to)
+    head = arr.select {|str| str[0] == from}
+    tail = arr - head
+    head.each do |str|
+      arr = tail.select {|sub| sub[0] == str[str.size-1]}
+      baz = ""
+      arr.map do |sub|
+        baz = str + sub
+        puts baz
+      end
+      #tail = tail - arr if baz[0] == from && baz[baz.size-1] == to
+    end
+    puts "TAIL:"
+    puts tail
   end
   
 end
@@ -97,8 +107,16 @@ describe "RouteSolver" do
     end
   end
   describe "" do
+    before do
+      @arr = ['AB', 'AB', 'AC', 'BC', 'BZ', 'CB', 'CZ']
+    end
     it "must do foo" do
-      @solver.create_paths(@params[0], 'A', 'Z')
+      res = @solver.create_paths(@arr, 'A', 'Z')
+      res.must_equal [["AB", "BC", "BZ"], ["AB", "BC", "BZ"], ["AC", "CB", "CZ"], ["BC", "CB", "CZ"], ["BZ"], ["CB", "BC", "BZ"], ["CZ"]]
+    end
+    it "" do
+      res = @solver.foo(@arr, 'A', 'Z')
+      res.must_equal ['BC', 'BZ', 'CB', 'CZ']
     end
    
   end
