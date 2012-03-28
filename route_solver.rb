@@ -1,5 +1,6 @@
 #require './lib/graph_spec.rb'
-
+require 'pry'
+  
 class RouteSolver
   
   def initialize(file)
@@ -47,28 +48,26 @@ class RouteSolver
     routes
   end
   
-  def create_paths(arr, from, to)
-    arr.map do |str|
-      last = str[str.size-1]
-      adj = arr.select {|str| str[0]==last}
-      [str] + adj
-    end
+  def paths(path, routes, edge="")
+    edges=[]
+    path = path + edge
+    adjacent = neighbors(path, routes)
+    return path if adjacent.empty?
+    routes = routes - adjacent
+    adjacent.each do |edge| 
+      edges << paths(path, routes, edge)
+    end 
+    edges.flatten
   end
   
-  def foo(arr, from, to)
-    head = arr.select {|str| str[0] == from}
-    tail = arr - head
-    head.each do |str|
-      arr = tail.select {|sub| sub[0] == str[str.size-1]}
-      baz = ""
-      arr.map do |sub|
-        baz = str + sub
-        puts baz
-      end
-      #tail = tail - arr if baz[0] == from && baz[baz.size-1] == to
+  def adjacent(from, to)
+    from[from.size-1] == to[0]
+  end
+  
+  def neighbors(path, routes)
+    routes.select do |route|
+      adjacent(path, route)
     end
-    puts "TAIL:"
-    puts tail
   end
   
 end
@@ -107,22 +106,52 @@ describe "RouteSolver" do
     end
   end
   describe "" do
-    before do
-      @arr = ['AB', 'AB', 'AC', 'BC', 'BZ', 'CB', 'CZ']
+    before do 
+      @path = 'AB'
+      @routes = ['AB', 'AB', 'AC', 'BC', 'BZ', 'CB', 'CZ']
     end
-    it "must do foo" do
-      res = @solver.create_paths(@arr, 'A', 'Z')
-      res.must_equal [["AB", "BC", "BZ"], ["AB", "BC", "BZ"], ["AC", "CB", "CZ"], ["BC", "CB", "CZ"], ["BZ"], ["CB", "BC", "BZ"], ["CZ"]]
+    it "must return an empty array when no neighbors exist" do
+      @solver.neighbors('AQ', @routes).must_equal []
     end
-    it "" do
-      res = @solver.foo(@arr, 'A', 'Z')
-      res.must_equal ['BC', 'BZ', 'CB', 'CZ']
+    it "must return the correct neighbors for single-edge path (base case)" do
+      @solver.neighbors(@path, @routes).must_equal ['BC', 'BZ']
     end
-   
+    it "must return the correct neighbors for multiple-edge path (composite case)" do
+      @solver.neighbors('ABBC', @routes).must_equal ['CB', 'CZ']
+    end
+    it "must return the path when called with no adjacent edges (base case)" do
+       @routes = ['AB', 'AB', 'AC', 'CB', 'CZ']
+       @solver.paths(@path, @routes).must_equal 'AB'
+    end
+    it "must return the list of paths (recursive case)" do
+      routes = @solver.paths(@path, @routes)
+      routes.must_equal ['ABBCCB', 'ABBCCZ', 'ABBZ']
+      @path = 'AC'
+      routes = @solver.paths(@path, @routes)
+      routes.must_equal ['ACCBBC', 'ACCBBZ', 'ACCZ']
+    end
+    it "must handle deep recursion (recursive case)" do
+      @routes = ['AB', 'AB', 'AC', 'BC', 'BQ', 'BZ', 'CB', 'CZ', 'ZQ']
+      routes = @solver.paths(@path, @routes)
+      routes.must_equal ['ABBCCB', 'ABBCCZZQ', 'ABBQ', 'ABBZZQ']
+    end
+    it "must handle duplicate routes" do
+      @routes = ['AB', 'BC', 'BC']
+      routes = @solver.paths(@path, @routes)
+      routes.must_equal ['ABBC', 'ABBC']
+    end
   end
+  
+    
 end
 
 =begin
 #route = false if line.match /^\s/
 #line.match(/^[A-Z]/) ? data = true : data = false
+=end
+
+=begin
+    puts "PATH: " + path
+    puts "ADJACENT: " + adjacent.to_s
+    puts "ROUTES: " + routes.to_s
 =end
