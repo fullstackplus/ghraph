@@ -1,7 +1,26 @@
 #require './lib/graph_spec.rb'
 require 'pry'
   
+=begin
+REFACTORING:
+1. Create regex pattern for data: 
+\d{2}:\d{2} for dep / arr
+(\d+\.\d{2}) for price
+
+2. Create object with a block interface
+3. Array, not Hash in process_indices
+4. Test with objects
+5. Latch the paths algorithm to objects
+6. Test with price
+7. Create time_digify function, test 
+9. Test all together on 3 random graphs
+=end  
+  
 class RouteSolver
+  
+  class Route
+    attr_accessor :from, :to, :dep, :arr, :price
+  end
   
   def initialize(file)
   end
@@ -9,55 +28,62 @@ class RouteSolver
   #private
   
   #make sense of how the input is structured
-  def process_indices(file)
-    schedules = {}
-    File.open(file) do |f|
+  def gather_indices(file)
+    indices = []
+    File.open(file) do |f| 
       f.gets
       while line = f.gets
         if line.match /(^\d{1,1}$)/
           num = f.lineno
           inc = line.strip.to_i
-          schedules.store(num, num+inc-1)
+          indices << [num, inc].join('-')
         end         
       end
     end
-    schedules
+    indices
   end
   
-  #load input into a Ruby data structure
-  def parse_file(file, schedules)
-    routes = []
-    lines =  File.open(file).readlines
-    schedules.each do |k, v|
-      route = []
-      while k <= v
-        data = lines[k].split(' ')
-        #http://stackoverflow.com/questions/3669974/create-hash-using-block-ruby
-        @params = {
-          "from" => data[0],
-          "to" => data[1],
-          "dep" => data[2],
-          "arr" => data[3],
-          "price" => data[4]
-        }
-        route << @params
-        k = k + 1
-      end
-      routes << route
+  def foo(file_path) 
+    File.open(file_path) do |f|
+      create_routes(f, gather_indices(f))
     end
-    routes
+  end
+  
+  def create_routes(file, indices)
+    indices.map do |index| 
+      digits = index.split('-')
+      num = digits[0].to_i
+      inc = digits[1].to_i
+      routes = []
+      while inc > 0
+        routes << create_route(file, num)
+        num += 1
+        inc -= 1
+      end
+      routes
+    end
+  end
+  
+  def create_route(file, number)
+    lines =  File.open(file).readlines
+    data = lines[number].split(' ')
+    route = Route.new
+    route.from =  data[0]
+    route.to =    data[1]
+    route.dep =   data[2] 
+    route.arr =   data[3]
+    route.price = data[4]
+    route
   end
   
   def paths(path, routes, edge="")
-    edges=[]
     path = path + edge
     adjacent = neighbors(path, routes)
     return path if adjacent.empty?
     routes = routes - adjacent
-    adjacent.each do |edge| 
-      edges << paths(path, routes, edge)
-    end 
-    edges.flatten
+    adjacent.map do |edge| 
+      paths(path, routes, edge)
+    end.flatten 
   end
   
   def adjacent(from, to)
@@ -77,35 +103,57 @@ require 'minitest/autorun'
 
 describe "RouteSolver" do 
   before do
-    @file = 'files/sample-input.txt'
+    @file = 'files/sample-input-test.txt'
     @solver = RouteSolver.new(@file)
-    @schedules = @solver.process_indices(@file)
-    @params = @solver.parse_file(@file, @schedules)
   end
-  describe "input processing" do
-    it "must parse the file correctly" do
-      @schedules.must_equal({3=>5, 8=>14})
-      @params.must_equal(
-        [
-          [
-            {"from" => "A", "to" => "B", "dep" => "09:00", "arr" => "10:00", "price" => "100.00"},
-            {"from" => "B", "to" => "Z", "dep" => "11:30", "arr" => "13:30", "price" => "100.00"},
-            {"from" => "A", "to" => "Z", "dep" => "10:00", "arr" => "12:00", "price" => "300.00"}
-          ],
-          [
-            {"from" => "A", "to" => "B", "dep" => "08:00", "arr" => "09:00", "price" => "50.00"},
-            {"from" => "A", "to" => "B", "dep" => "12:00", "arr" => "13:00", "price" => "300.00"},
-            {"from" => "A", "to" => "C", "dep" => "14:00", "arr" => "15:30", "price" => "175.00"},
-            {"from" => "B", "to" => "C", "dep" => "10:00", "arr" => "11:00", "price" => "75.00"},
-            {"from" => "B", "to" => "Z", "dep" => "15:00", "arr" => "16:30", "price" => "250.00"},
-            {"from" => "C", "to" => "B", "dep" => "15:45", "arr" => "16:45", "price" => "50.00"},
-            {"from" => "C", "to" => "Z", "dep" => "16:00", "arr" => "19:00", "price" => "100.00"}
-          ]
-        ]
-      )
+
+  describe "test correct gathering of route indices" do 
+     it "must create an array with the correct numbers" do 
+       indices = @solver.gather_indices(@file)
+       indices.must_equal ['3-1', '6-2']
+     end  
+  end
+
+  describe "test creation of routes from a file and index" do 
+    it "must instantiate an object with proper attributes" do 
+      route = @solver.create_route(@file, 3)
+      route.from.must_equal  'A'
+      route.to.must_equal    'B'
+      route.dep.must_equal   '09:00'
+      route.arr.must_equal   '10:00'
+      route.price.must_equal '100.00'
+    end  
+  end
+
+  describe "test creation of route objects from an array of indices" do
+    it "must contain the right number of correct objects" do
+      routes = @solver.create_routes(@file, ['3-1', '6-2']) 
+      routes.length.must_equal 2
+      first_route = routes[0]
+      first_route.length.must_equal 1
+      second_route = routes[1]
+      second_route.length.must_equal 2
+      first_route[0].price.must_equal '100.00'
+      second_route[0].price.must_equal '50.00'
+      second_route[1].price.must_equal '300.00'
     end
   end
-  describe "" do
+  
+  describe "test foo function" do 
+    it "must do foo" do
+      routes = @solver.foo('files/sample-input-test.txt')
+      routes.length.must_equal 2
+      first_route = routes[0]
+      first_route.length.must_equal 1
+      second_route = routes[1]
+      second_route.length.must_equal 2
+      first_route[0].price.must_equal '100.00'
+      second_route[0].price.must_equal '50.00'
+      second_route[1].price.must_equal '300.00'
+    end
+  end
+  
+  describe "testing the core algorithm" do
     before do 
       @path = 'AB'
       @routes = ['AB', 'AB', 'AC', 'BC', 'BZ', 'CB', 'CZ']
