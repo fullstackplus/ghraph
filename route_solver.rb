@@ -103,14 +103,14 @@ require 'minitest/autorun'
 
 describe "RouteSolver" do 
   before do
-    @file = 'files/sample-input-test.txt'
+    @file = 'files/sample-input.txt'
     @solver = RouteSolver.new(@file)
   end
 
   describe "test correct gathering of route indices" do 
      it "must create an array with the correct numbers" do 
        indices = @solver.gather_indices(@file)
-       indices.must_equal ['3-1', '6-2']
+       indices.must_equal ['3-3', '8-7']
      end  
   end
 
@@ -127,29 +127,16 @@ describe "RouteSolver" do
 
   describe "test creation of route objects from an array of indices" do
     it "must contain the right number of correct objects" do
-      routes = @solver.create_routes(@file, ['3-1', '6-2']) 
+      routes = @solver.create_routes(@file, ['3-3', '8-7']) 
       routes.length.must_equal 2
       first_route = routes[0]
-      first_route.length.must_equal 1
+      first_route.length.must_equal 3
       second_route = routes[1]
-      second_route.length.must_equal 2
+      second_route.length.must_equal 7
       first_route[0].price.must_equal '100.00'
+      first_route[2].price.must_equal '300.00'
       second_route[0].price.must_equal '50.00'
-      second_route[1].price.must_equal '300.00'
-    end
-  end
-  
-  describe "test foo function" do 
-    it "must do foo" do
-      routes = @solver.foo('files/sample-input-test.txt')
-      routes.length.must_equal 2
-      first_route = routes[0]
-      first_route.length.must_equal 1
-      second_route = routes[1]
-      second_route.length.must_equal 2
-      first_route[0].price.must_equal '100.00'
-      second_route[0].price.must_equal '50.00'
-      second_route[1].price.must_equal '300.00'
+      second_route[6].price.must_equal '100.00'
     end
   end
   
