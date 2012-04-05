@@ -104,8 +104,8 @@ class RouteSolver
     flight1.to == flight2.from
   end
   
-  def neighbors(flights, route) #rename to schedules
-    route.select do |flt|
+  def neighbors(flights, schedule)
+    schedule.select do |flt|
       adjacent(flights.last, flt)
     end
   end
@@ -156,7 +156,7 @@ describe "RouteSolver" do
   
   describe "testing the route creation algorithm" do
     before do 
-      schedules = @solver.create_schedules(@file, ['3-3', '8-7']) #rename to schedules
+      schedules = @solver.create_schedules(@file, ['3-3', '8-7']) 
       @schedule = schedules[1]
       @flight = @schedule[0]     
     end
