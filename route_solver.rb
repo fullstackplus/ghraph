@@ -11,6 +11,7 @@ REFACTORING:
 3. Array, not Hash in process_indices
 4. Test with objects
 5. Latch the paths algorithm to objects
+
 6. Test with price
 7. Create time_digify function, test 
 9. Test all together on 3 random graphs
@@ -128,7 +129,7 @@ describe "RouteSolver" do
      end  
   end
 
-  describe "test creation of routes from a file and index" do 
+  describe "test creation of Flight object given file and index" do 
     it "must instantiate an object with proper attributes" do 
       flight = @solver.create_flight(@file, 3)
       flight.from.must_equal  'A'
@@ -139,18 +140,20 @@ describe "RouteSolver" do
     end  
   end
 
-  describe "test creation of route objects from an array of indices" do
-    it "must contain the right number of correct objects" do
-      routes = @solver.create_schedules(@file, ['3-3', '8-7']) 
-      routes.length.must_equal 2
-      first_route = routes[0]
-      first_route.length.must_equal 3
-      second_route = routes[1]
-      second_route.length.must_equal 7
-      first_route[0].price.must_equal '100.00'
-      first_route[2].price.must_equal '300.00'
-      second_route[0].price.must_equal '50.00'
-      second_route[6].price.must_equal '100.00'
+  describe "test creation of schedules from an array of indices" do
+    it "must contain the right number of correct Flight objects" do
+      schedules = @solver.create_schedules(@file, ['3-3', '8-7']) 
+      schedules.length.must_equal 2
+  
+      first_schedule = schedules[0]
+      first_schedule.length.must_equal 3
+      first_schedule[0].price.must_equal '100.00'
+      first_schedule[2].price.must_equal '300.00'
+      
+      second_schedule = schedules[1]
+      second_schedule.length.must_equal 7
+      second_schedule[0].price.must_equal '50.00'
+      second_schedule[6].price.must_equal '100.00'
     end
   end
   
@@ -191,16 +194,18 @@ describe "RouteSolver" do
     end
      
     describe "testing route generation" do
-      it "must return the path when called with no adjacent edges (base case)" do
+      it "must return the route when no neighboring flights exist (base case)" do
          @flight.to = 'Q'
          route = @solver.paths(@flight, @schedule)
          route.length.must_equal 1
          route[0].flights.must_equal [@flight]
       end
 
-      it "must return the list of paths (recursive case)" do
+      it "must return the list of all possible routes given a flight and a list of scheduled flights (recursive case)" do
         routes = @solver.paths(@flight, @schedule)
         routes.length.must_equal 3
+        
+        puts "ROUTES: #{routes}"
         
         first_route = routes[0]
         first_route.flights.length.must_equal 3
