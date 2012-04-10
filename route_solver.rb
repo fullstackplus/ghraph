@@ -1,25 +1,10 @@
-#require './lib/graph_spec.rb'
 require 'pry'
-  
-=begin
-REFACTORING:
-1. Create regex pattern for data: 
-\d{2}:\d{2} for dep / arr
-(\d+\.\d{2}) for price
+require './time-arithmetic'
 
-2. Create object with a block interface
-3. Array, not Hash in process_indices
-4. Test with objects
-5. Latch the paths algorithm on to objects
-
-6. Test with price
-7. Create time_digify function, test 
-9. Test all together on 3 random graphs
-=end  
-  
 class RouteSolver
   
   class Flight
+    include TimeArithmetic
     attr_accessor :from, :to, :dep, :arr, :price
     
     def initialize
@@ -27,17 +12,12 @@ class RouteSolver
     end
     
     def duration
-      digify(@arr) - digify(@dep)
-    end
-    
-    #refactor to module time_arithmetic
-    def digify
+      subtract(arr, dep)
     end
   end
   
   class Route 
     attr_reader :flights
-    attr_accessor :dur #for testing only, use the method duration() in production
     
     def initialize(flights)
       @flights = flights
@@ -53,14 +33,15 @@ class RouteSolver
     end
     
     def duration
-      #@flights.map {|flt| flt.duration}.reduce {|sum, duration| sum += duration}
-      5
+      @flights.map {|flt| flt.duration}.reduce {|sum, duration| sum += duration}
     end
   end
     
+  #TODO  
   def initialize(file)
   end
   
+  #TODO
   def foo(file_path) 
     File.open(file_path) do |f|
       schedules(f, gather_indices(f))
@@ -317,7 +298,7 @@ describe "RouteSolver" do
       it "must calculate duration for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         routes[0].duration.must_equal 5  
-        routes[5].duration.must_equal 4,5   
+        routes[5].duration.must_equal 4.5   
       end
       
       #TODO
@@ -325,8 +306,8 @@ describe "RouteSolver" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         shortest = @solver.lowest_by_duration(routes)  
         shortest.length.must_equal 2
-        shortest[0].duration.must_equal 2,5
-        shortest[1].duration.must_equal 2,5
+        shortest[0].duration.must_equal 2.5
+        shortest[1].duration.must_equal 2.5
       end
       
     end    
