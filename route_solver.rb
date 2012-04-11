@@ -1,15 +1,23 @@
 require './time-arithmetic'
+include TimeArithmetic
 
 class RouteSolver
   
   class Flight
-    include TimeArithmetic
     attr_accessor :from, :to, :dep, :arr, :prc
     
     def initialize
       yield self
     end
     
+    def departure
+      dep.to_f
+    end
+    
+    def arrival
+      arr.to_f
+    end
+
     def price
       prc.to_f
     end
@@ -19,7 +27,7 @@ class RouteSolver
     end
   end
   
-  class Route 
+  class Route
     attr_reader :flights
     
     def initialize(flights)
@@ -31,8 +39,21 @@ class RouteSolver
       @flights.last.to.eql?(destination)
     end
 
-    def get(attrib)
-      @flights.map {|flt| flt.send(attrib)}.reduce {|sum, thing| sum += thing}
+    def price
+      @flights.map {|flt| flt.price}.reduce {|sum, price| sum += price} 
+    end
+    
+    def duration
+      subtract(@flights.last.arr, @flights.first.dep) 
+    end
+    
+    def possible?
+      @flights.each_cons(2) do |flights|
+         if flights[1].departure < flights[0].arrival 
+           return false
+         end
+       end
+      true
     end
   end
     
@@ -125,12 +146,13 @@ class RouteSolver
     end.map do |flt|
       routes(flt, schedule)
     end.flatten
-    filter(all_routes, origin, destination)
+    routes = filter(all_routes, origin, destination)
+    routes.select {|route| route.possible?}
   end
   
   def lowest_by(attrib, routes)
-    lowest = routes.map {|route| route.get(attrib)}.min
-    routes.select {|route| route.get(attrib).eql? lowest}
+    lowest = routes.map {|route| route.send(attrib)}.min
+    routes.select {|route| route.send(attrib).eql? lowest}
   end
 end
 
@@ -261,7 +283,7 @@ describe "RouteSolver" do
         first_route.connects?('A', 'B').must_equal true
       end
       
-      it "must filter out those routes that connect two given endpoints" do
+      it "must filter out routes that connect two given endpoints" do
         routes = @solver.routes(@flight, @schedule)
         filtered = @solver.filter(routes, 'A', 'Z')
         filtered.length.must_equal 2
@@ -271,34 +293,33 @@ describe "RouteSolver" do
       
       it "must generate all routes between two given endpoints" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes.length.must_equal 6      
+        routes.length.must_equal 4
       end
       
       it "must calculate price for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes[0].get(:price).must_equal 225
-        routes[5].get(:price).must_equal 275  
+        routes[0].price.must_equal 225
+        routes[3].price.must_equal 275  
       end
       
       it "must calculate route(s) with lowest price" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         cheapest = @solver.lowest_by(:price, routes)
         cheapest.length.must_equal 1
-        cheapest[0].get(:price).must_equal 225  
+        cheapest[0].price.must_equal 225  
       end
       
       it "must calculate duration for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes[0].get(:duration).must_equal 5  
-        routes[5].get(:duration).must_equal 4.5   
+        routes[0].duration.must_equal 11  
+        routes[3].duration.must_equal 5.0   
       end
       
       it "must calculate route(s) with lowest duration" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         shortest = @solver.lowest_by(:duration, routes)  
-        shortest.length.must_equal 2
-        shortest[0].get(:duration).must_equal 2.5
-        shortest[1].get(:duration).must_equal 2.5
+        shortest.length.must_equal 1
+        shortest[0].duration.must_equal 4.5 
       end
     end    
   end
@@ -328,35 +349,35 @@ end
     [#<RouteSolver::Flight:0x007faf4b192808 @from="A", @to="B", @dep="08:00", @arr="09:00", @price="50.00">, 1
      #<RouteSolver::Flight:0x007faf4b19bbb0 @from="B", @to="C", @dep="10:00", @arr="11:00", @price="75.00">, 1
      #<RouteSolver::Flight:0x007faf4b19a670 @from="C", @to="Z", @dep="16:00", @arr="19:00", @price="100.00"> 3
-    ]>, 
+    ]>, 11
   #<RouteSolver::Route:0x007faf4b1a3b80 @flights=
     [#<RouteSolver::Flight:0x007faf4b192808 @from="A", @to="B", @dep="08:00", @arr="09:00", @price="50.00">, 1
      #<RouteSolver::Flight:0x007faf4b19b408 @from="B", @to="Z", @dep="15:00", @arr="16:30", @price="250.00"> 1,5
-    ]>, 
+    ]>, 8,5
   #<RouteSolver::Route:0x007faf4b1a2e60 @flights=
     [#<RouteSolver::Flight:0x007faf4b19cc40 @from="A", @to="B", @dep="12:00", @arr="13:00", @price="300.00">, 1
      #<RouteSolver::Flight:0x007faf4b19bbb0 @from="B", @to="C", @dep="10:00", @arr="11:00", @price="75.00">,  1
      #<RouteSolver::Flight:0x007faf4b19a670 @from="C", @to="Z", @dep="16:00", @arr="19:00", @price="100.00">  3
-    ]>, 
+    ]>, 7 - impossible
   #<RouteSolver::Route:0x007faf4b1a2cf8 @flights=
     [#<RouteSolver::Flight:0x007faf4b19cc40 @from="A", @to="B", @dep="12:00", @arr="13:00", @price="300.00">, 1
      #<RouteSolver::Flight:0x007faf4b19b408 @from="B", @to="Z", @dep="15:00", @arr="16:30", @price="250.00">  1,5
-    ]>, 
+    ]>, 4,5
   #<RouteSolver::Route:0x007faf4b1a24b0 @flights=
     [#<RouteSolver::Flight:0x007faf4b19c538 @from="A", @to="C", @dep="14:00", @arr="15:30", @price="175.00">, 1,5
      #<RouteSolver::Flight:0x007faf4b19acb0 @from="C", @to="B", @dep="15:45", @arr="16:45", @price="50.00">,  1 
      #<RouteSolver::Flight:0x007faf4b19b408 @from="B", @to="Z", @dep="15:00", @arr="16:30", @price="250.00">  1,5
-    ]>, 
+    ]>, 2,5 - impossible
   #<RouteSolver::Route:0x007faf4b1a22a8 @flights=
     [#<RouteSolver::Flight:0x007faf4b19c538 @from="A", @to="C", @dep="14:00", @arr="15:30", @price="175.00">, 1,5
      #<RouteSolver::Flight:0x007faf4b19a670 @from="C", @to="Z", @dep="16:00", @arr="19:00", @price="100.00">  3
-    ]>
+    ]> 5
 ]
 =end
 
 
 
-
+#functional programming, polymorphism, structured data processing, graph theory, recursion
 
 
 
