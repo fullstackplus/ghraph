@@ -1,14 +1,17 @@
-require 'pry'
 require './time-arithmetic'
 
 class RouteSolver
   
   class Flight
     include TimeArithmetic
-    attr_accessor :from, :to, :dep, :arr, :price
+    attr_accessor :from, :to, :dep, :arr, :prc
     
     def initialize
       yield self
+    end
+    
+    def price
+      prc.to_f
     end
     
     def duration
@@ -27,13 +30,9 @@ class RouteSolver
       @flights.first.from.eql?(origin) && 
       @flights.last.to.eql?(destination)
     end
-    
-    def price
-      @flights.map {|flt| flt.price.to_i}.reduce {|sum, price| sum += price}
-    end
-    
-    def duration
-      @flights.map {|flt| flt.duration}.reduce {|sum, duration| sum += duration}
+
+    def get(attrib)
+      @flights.map {|flt| flt.send(attrib)}.reduce {|sum, thing| sum += thing}
     end
   end
     
@@ -50,7 +49,6 @@ class RouteSolver
   
   #private
   
-  #make sense of how the input is structured
   def gather_indices(file)
     indices = []
     File.open(file) do |f| 
@@ -85,11 +83,11 @@ class RouteSolver
     lines =  File.open(file).readlines
     data = lines[number].split(' ')
     flight = Flight.new do |f|
-      f.from =  data[0] 
-      f.to =    data[1]
-      f.dep =   data[2] 
-      f.arr =   data[3]
-      f.price = data[4]
+      f.from = data[0] 
+      f.to   = data[1]
+      f.dep  = data[2] 
+      f.arr  = data[3]
+      f.prc  = data[4]
     end
     flight
   end
@@ -130,20 +128,15 @@ class RouteSolver
     filter(all_routes, origin, destination)
   end
   
-  def lowest_by_price(routes)
-    lowest = routes.map {|route| route.price}.min
-    routes.select {|route| route.price.eql? lowest}
+  def lowest_by(attrib, routes)
+    lowest = routes.map {|route| route.get(attrib)}.min
+    routes.select {|route| route.get(attrib).eql? lowest}
   end
-  
-  def lowest_by_duration(routes)
-    lowest = routes.map {|route| route.duration}.min
-    routes.select {|route| route.duration.eql? lowest}
-  end
-  
 end
 
 require 'minitest/spec'
 require 'minitest/autorun'
+require 'pry'
 
 describe "RouteSolver" do 
   before do
@@ -165,7 +158,7 @@ describe "RouteSolver" do
       flight.to.must_equal    'B'
       flight.dep.must_equal   '09:00'
       flight.arr.must_equal   '10:00'
-      flight.price.must_equal '100.00'
+      flight.prc.must_equal   '100.00'
     end  
   end
 
@@ -176,13 +169,13 @@ describe "RouteSolver" do
   
       first_schedule = schedules[0]
       first_schedule.length.must_equal 3
-      first_schedule[0].price.must_equal '100.00'
-      first_schedule[2].price.must_equal '300.00'
+      first_schedule[0].prc.must_equal '100.00'
+      first_schedule[2].prc.must_equal '300.00'
       
       second_schedule = schedules[1]
       second_schedule.length.must_equal 7
-      second_schedule[0].price.must_equal '50.00'
-      second_schedule[6].price.must_equal '100.00'
+      second_schedule[0].prc.must_equal '50.00'
+      second_schedule[6].prc.must_equal '100.00'
     end
   end
   
@@ -196,11 +189,11 @@ describe "RouteSolver" do
     describe "testing neighboring routes" do
       it "must return an empty array when no neighbors exist (base case)" do
         flight = RouteSolver::Flight.new do |f|
-          f.from =  'A'
-          f.to =    'Q'
-          f.dep =   '09:00' 
-          f.arr =   '12:30'
-          f.price = '50.99'
+          f.from   = 'A'
+          f.to     = 'Q'
+          f.dep = '09:00' 
+          f.arr = '12:30'
+          f.prc = '50.99'
         end
         @solver.neighbors([flight], @schedule).must_equal []
       end
@@ -208,8 +201,8 @@ describe "RouteSolver" do
       it "must return the correct neighbors for a single flight (composite case)" do
         thahood = @solver.neighbors([@flight], @schedule)
         thahood.length.must_equal 2
-        thahood[0].price.must_equal '75.00'
-        thahood[1].price.must_equal '250.00'
+        thahood[0].prc.must_equal '75.00'
+        thahood[1].prc.must_equal '250.00'
       end
 
       it "must return the correct neighbors for multiple flights (composite case)" do
@@ -217,8 +210,8 @@ describe "RouteSolver" do
         flight2 = @schedule[3]
         thahood = @solver.neighbors([flight1, flight2], @schedule)
         thahood.length.must_equal 2
-        thahood[0].price.must_equal '50.00'
-        thahood[1].price.must_equal '100.00'
+        thahood[0].prc.must_equal '50.00'
+        thahood[1].prc.must_equal '100.00'
       end
     end
      
@@ -238,18 +231,18 @@ describe "RouteSolver" do
         
         first_route = routes[0]
         first_route.flights.length.must_equal 3
-        first_route.flights.first.price.must_equal '50.00'
-        first_route.flights.last.price.must_equal '50.00'
+        first_route.flights.first.prc.must_equal '50.00'
+        first_route.flights.last.prc.must_equal '50.00'
         
         second_route = routes[1]
         second_route.flights.length.must_equal 3
-        second_route.flights.first.price.must_equal '50.00'
-        second_route.flights.last.price.must_equal '100.00'
+        second_route.flights.first.prc.must_equal '50.00'
+        second_route.flights.last.prc.must_equal '100.00'
         
         third_route = routes[2]
         third_route.flights.length.must_equal 2
-        third_route.flights.first.price.must_equal '50.00'
-        third_route.flights.last.price.must_equal '250.00'
+        third_route.flights.first.prc.must_equal '50.00'
+        third_route.flights.last.prc.must_equal '250.00'
       end
       
       it "must tell if the route connects two endpoints (more than one route)" do
@@ -283,33 +276,30 @@ describe "RouteSolver" do
       
       it "must calculate price for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes[0].price.must_equal 225
-        routes[5].price.must_equal 275  
+        routes[0].get(:price).must_equal 225
+        routes[5].get(:price).must_equal 275  
       end
       
       it "must calculate route(s) with lowest price" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
-        cheapest = @solver.lowest_by_price(routes)
+        cheapest = @solver.lowest_by(:price, routes)
         cheapest.length.must_equal 1
-        cheapest[0].price.must_equal 225  
+        cheapest[0].get(:price).must_equal 225  
       end
       
-      #TODO
       it "must calculate duration for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes[0].duration.must_equal 5  
-        routes[5].duration.must_equal 4.5   
+        routes[0].get(:duration).must_equal 5  
+        routes[5].get(:duration).must_equal 4.5   
       end
       
-      #TODO
       it "must calculate route(s) with lowest duration" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
-        shortest = @solver.lowest_by_duration(routes)  
+        shortest = @solver.lowest_by(:duration, routes)  
         shortest.length.must_equal 2
-        shortest[0].duration.must_equal 2.5
-        shortest[1].duration.must_equal 2.5
+        shortest[0].get(:duration).must_equal 2.5
+        shortest[1].get(:duration).must_equal 2.5
       end
-      
     end    
   end
 end
