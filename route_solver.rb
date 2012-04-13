@@ -25,6 +25,10 @@ class RouteSolver
     def duration
       subtract(arr, dep)
     end
+    
+    def to_s
+      "#{from} #{to} #{dep} #{arr} #{price}"
+    end
   end
   
   class Route
@@ -54,6 +58,15 @@ class RouteSolver
          end
        end
       true
+    end
+    
+    #TODO
+    def prc
+      price.to_s + '0' 
+    end
+    
+    def to_s
+      "#{@flights.first.dep} #{@flights.last.arr} #{prc}\n"
     end
   end
     
@@ -201,10 +214,10 @@ describe "RouteSolver" do
     end
   end
   
-  describe "testing the route creation algorithm" do
+  describe "testing the route generation algorithm" do
     before do 
-      schedules = @solver.schedules(@file, ['3-3', '8-7']) 
-      @schedule = schedules[1]
+      @schedules = @solver.schedules(@file, ['3-3', '8-7']) 
+      @schedule = @schedules[1]
       @flight = @schedule[0]     
     end
     
@@ -248,9 +261,7 @@ describe "RouteSolver" do
       it "must return the list of all possible routes given a flight and a list of scheduled flights (recursive case)" do
         routes = @solver.routes(@flight, @schedule)
         routes.length.must_equal 3
-        
-        #puts "ROUTES: #{routes}"
-        
+
         first_route = routes[0]
         first_route.flights.length.must_equal 3
         first_route.flights.first.prc.must_equal '50.00'
@@ -266,14 +277,16 @@ describe "RouteSolver" do
         third_route.flights.first.prc.must_equal '50.00'
         third_route.flights.last.prc.must_equal '250.00'
       end
-      
+    end
+    
+    describe "testing connections betweeen route end points" do 
       it "must tell if the route connects two endpoints (more than one route)" do
         routes = @solver.routes(@flight, @schedule)
         routes[0].connects?('A', 'Z').must_equal false
         routes[1].connects?('A', 'Z').must_equal true
         routes[2].connects?('A', 'Z').must_equal true
       end
-      
+
       it "must tell if the route connects two endpoints (one route)" do
         routes = @solver.routes(@flight, @schedule)
         first_route = routes[0]
@@ -282,7 +295,7 @@ describe "RouteSolver" do
         first_route.flights.length.must_equal 1
         first_route.connects?('A', 'B').must_equal true
       end
-      
+
       it "must filter out routes that connect two given endpoints" do
         routes = @solver.routes(@flight, @schedule)
         filtered = @solver.filter(routes, 'A', 'Z')
@@ -290,39 +303,72 @@ describe "RouteSolver" do
         filtered[0].connects?('A','Z').must_equal true
         filtered[1].connects?('A','Z').must_equal true
       end
-      
-      it "must generate all routes between two given endpoints" do
+
+      it "must generate all valid routes between two given endpoints" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         routes.length.must_equal 4
       end
-      
+    end
+
+    describe "testing price and duration claculation for routes" do
       it "must calculate price for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         routes[0].price.must_equal 225
         routes[3].price.must_equal 275  
       end
-      
+
       it "must calculate route(s) with lowest price" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         cheapest = @solver.lowest_by(:price, routes)
         cheapest.length.must_equal 1
         cheapest[0].price.must_equal 225  
       end
-      
+
       it "must calculate duration for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         routes[0].duration.must_equal 11  
         routes[3].duration.must_equal 5.0   
       end
-      
+
       it "must calculate route(s) with lowest duration" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         shortest = @solver.lowest_by(:duration, routes)  
         shortest.length.must_equal 1
         shortest[0].duration.must_equal 4.5 
       end
-    end    
-  end
+    end
+    
+    describe "pretty-printing of objects" do
+      it "must print the objects" do
+        routes = @solver.routes_between(@schedule, 'A', 'Z')
+        cheapest = @solver.lowest_by(:price, routes)
+        shortest = @solver.lowest_by(:duration, routes) 
+        results = cheapest + shortest
+        results.length.must_equal 2
+        text = <<-EOS.gsub(/^\s+/, '')
+          08:00 19:00 225.00
+          12:00 16:30 550.00
+        EOS
+        output = ""
+        results.each {|route| output << route.to_s}
+        output.must_equal text
+
+        @schedule = @schedules[0]
+        routes = @solver.routes_between(@schedule, 'A', 'Z')
+        cheapest = @solver.lowest_by(:price, routes)
+        shortest = @solver.lowest_by(:duration, routes) 
+        results = cheapest + shortest
+        results.length.must_equal 2
+        text = <<-EOS.gsub(/^\s+/, '')
+          09:00 13:30 200.00
+          10:00 12:00 300.00
+        EOS
+        output = ""
+        results.each {|route| output << route.to_s}
+        output.must_equal text
+      end
+    end
+  end    
 end
     
 
