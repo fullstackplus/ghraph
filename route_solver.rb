@@ -213,7 +213,7 @@ describe "RouteSolver" do
       second_schedule[6].prc.must_equal '100.00'
     end
   end
-  
+   
   describe "testing the route generation algorithm" do
     before do 
       @schedules = @solver.schedules(@file, ['3-3', '8-7']) 
@@ -310,7 +310,7 @@ describe "RouteSolver" do
       end
     end
 
-    describe "testing price and duration claculation for routes" do
+    describe "testing price and duration calculation for routes" do
       it "must calculate price for route" do
         routes = @solver.routes_between(@schedule, 'A', 'Z')
         routes[0].price.must_equal 225
