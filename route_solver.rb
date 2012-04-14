@@ -60,9 +60,8 @@ class RouteSolver
       true
     end
     
-    #TODO
     def prc
-      price.to_s + '0' 
+      price.modulo(1).eql?(0.0)? price.to_s + '0' : price 
     end
     
     def to_s
@@ -154,13 +153,10 @@ class RouteSolver
   end
   
   def routes_between(schedule, origin, destination)
-    all_routes = schedule.select do |flt|
-      flt.from.eql? origin
-    end.map do |flt|
-      routes(flt, schedule)
-    end.flatten
-    routes = filter(all_routes, origin, destination)
-    routes.select {|route| route.possible?}
+    filter(schedule.select {|flt| flt.from.eql? origin}
+    .map {|flt| routes(flt, schedule)}.flatten, 
+    origin, destination)
+    .select {|route| route.possible?}
   end
   
   def lowest_by(attrib, routes)
@@ -278,97 +274,113 @@ describe "RouteSolver" do
         third_route.flights.last.prc.must_equal '250.00'
       end
     end
-    
-    describe "testing connections betweeen route end points" do 
-      it "must tell if the route connects two endpoints (more than one route)" do
-        routes = @solver.routes(@flight, @schedule)
-        routes[0].connects?('A', 'Z').must_equal false
-        routes[1].connects?('A', 'Z').must_equal true
-        routes[2].connects?('A', 'Z').must_equal true
-      end
+  end
 
-      it "must tell if the route connects two endpoints (one route)" do
-        routes = @solver.routes(@flight, @schedule)
-        first_route = routes[0]
-        first_route.flights.pop
-        first_route.flights.pop
-        first_route.flights.length.must_equal 1
-        first_route.connects?('A', 'B').must_equal true
-      end
-
-      it "must filter out routes that connect two given endpoints" do
-        routes = @solver.routes(@flight, @schedule)
-        filtered = @solver.filter(routes, 'A', 'Z')
-        filtered.length.must_equal 2
-        filtered[0].connects?('A','Z').must_equal true
-        filtered[1].connects?('A','Z').must_equal true
-      end
-
-      it "must generate all valid routes between two given endpoints" do
-        routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes.length.must_equal 4
-      end
+  describe "testing connections betweeen route end points" do
+    before do 
+      @schedules = @solver.schedules(@file, ['3-3', '8-7']) 
+      @schedule = @schedules[1]
+      @flight = @schedule[0]     
+    end
+     
+    it "must tell if the route connects two endpoints (more than one route)" do
+      routes = @solver.routes(@flight, @schedule)
+      routes[0].connects?('A', 'Z').must_equal false
+      routes[1].connects?('A', 'Z').must_equal true
+      routes[2].connects?('A', 'Z').must_equal true
     end
 
-    describe "testing price and duration calculation for routes" do
-      it "must calculate price for route" do
-        routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes[0].price.must_equal 225
-        routes[3].price.must_equal 275  
-      end
+    it "must tell if the route connects two endpoints (one route)" do
+      routes = @solver.routes(@flight, @schedule)
+      first_route = routes[0]
+      first_route.flights.pop
+      first_route.flights.pop
+      first_route.flights.length.must_equal 1
+      first_route.connects?('A', 'B').must_equal true
+    end
 
-      it "must calculate route(s) with lowest price" do
-        routes = @solver.routes_between(@schedule, 'A', 'Z')
-        cheapest = @solver.lowest_by(:price, routes)
-        cheapest.length.must_equal 1
-        cheapest[0].price.must_equal 225  
-      end
+    it "must filter out routes that connect two given endpoints" do
+      routes = @solver.routes(@flight, @schedule)
+      filtered = @solver.filter(routes, 'A', 'Z')
+      filtered.length.must_equal 2
+      filtered[0].connects?('A','Z').must_equal true
+      filtered[1].connects?('A','Z').must_equal true
+    end
 
-      it "must calculate duration for route" do
-        routes = @solver.routes_between(@schedule, 'A', 'Z')
-        routes[0].duration.must_equal 11  
-        routes[3].duration.must_equal 5.0   
-      end
+    it "must generate all valid routes between two given endpoints" do
+      routes = @solver.routes_between(@schedule, 'A', 'Z')
+      routes.length.must_equal 4
+    end
+  end
 
-      it "must calculate route(s) with lowest duration" do
-        routes = @solver.routes_between(@schedule, 'A', 'Z')
-        shortest = @solver.lowest_by(:duration, routes)  
-        shortest.length.must_equal 1
-        shortest[0].duration.must_equal 4.5 
-      end
+  describe "testing price and duration calculation for routes" do
+    before do 
+      @schedules = @solver.schedules(@file, ['3-3', '8-7']) 
+      @schedule = @schedules[1]   
     end
     
-    describe "pretty-printing of objects" do
-      it "must print the objects" do
-        routes = @solver.routes_between(@schedule, 'A', 'Z')
-        cheapest = @solver.lowest_by(:price, routes)
-        shortest = @solver.lowest_by(:duration, routes) 
-        results = cheapest + shortest
-        results.length.must_equal 2
-        text = <<-EOS.gsub(/^\s+/, '')
-          08:00 19:00 225.00
-          12:00 16:30 550.00
-        EOS
-        output = ""
-        results.each {|route| output << route.to_s}
-        output.must_equal text
-
-        @schedule = @schedules[0]
-        routes = @solver.routes_between(@schedule, 'A', 'Z')
-        cheapest = @solver.lowest_by(:price, routes)
-        shortest = @solver.lowest_by(:duration, routes) 
-        results = cheapest + shortest
-        results.length.must_equal 2
-        text = <<-EOS.gsub(/^\s+/, '')
-          09:00 13:30 200.00
-          10:00 12:00 300.00
-        EOS
-        output = ""
-        results.each {|route| output << route.to_s}
-        output.must_equal text
-      end
+    it "must calculate price for route" do
+      routes = @solver.routes_between(@schedule, 'A', 'Z')
+      routes[0].price.must_equal 225
+      routes[3].price.must_equal 275  
     end
-  end    
+
+    it "must calculate route(s) with lowest price" do
+      routes = @solver.routes_between(@schedule, 'A', 'Z')
+      cheapest = @solver.lowest_by(:price, routes)
+      cheapest.length.must_equal 1
+      cheapest[0].price.must_equal 225  
+    end
+
+    it "must calculate duration for route" do
+      routes = @solver.routes_between(@schedule, 'A', 'Z')
+      routes[0].duration.must_equal 11  
+      routes[3].duration.must_equal 5.0   
+    end
+
+    it "must calculate route(s) with lowest duration" do
+      routes = @solver.routes_between(@schedule, 'A', 'Z')
+      shortest = @solver.lowest_by(:duration, routes)  
+      shortest.length.must_equal 1
+      shortest[0].duration.must_equal 4.5 
+    end
+  end
+
+  describe "pretty-printing of objects" do
+    before do 
+      @schedules = @solver.schedules(@file, ['3-3', '8-7']) 
+      @schedule1 = @schedules[0]
+      @schedule2 = @schedules[1]  
+    end
+    
+    it "must print the objects" do
+      routes = @solver.routes_between(@schedule1, 'A', 'Z')
+      cheapest = @solver.lowest_by(:price, routes)
+      shortest = @solver.lowest_by(:duration, routes) 
+      results = cheapest + shortest
+      results.length.must_equal 2
+      text = <<-EOS.gsub(/^\s+/, '')
+        09:00 13:30 200.00
+        10:00 12:00 300.00
+      EOS
+      output = ""
+      results.each {|route| output << route.to_s}
+      output.must_equal text
+      
+      routes = @solver.routes_between(@schedule2, 'A', 'Z')
+      cheapest = @solver.lowest_by(:price, routes)
+      shortest = @solver.lowest_by(:duration, routes) 
+      results = cheapest + shortest
+      results.length.must_equal 2
+      text = <<-EOS.gsub(/^\s+/, '')
+        08:00 19:00 225.00
+        12:00 16:30 550.00
+      EOS
+      output = ""
+      results.each {|route| output << route.to_s}
+      output.must_equal text
+    end
+  end
 end
     
 
@@ -423,8 +435,8 @@ end
 
 
 
-#functional programming, polymorphism, structured data processing, graph theory, recursion
-
+#The toolkit that I'm quite comfortable with: processing of structured data, functional programming techniques, 
+#graph and set theory, recursive algorithms, polymorphism.
 
 
 
