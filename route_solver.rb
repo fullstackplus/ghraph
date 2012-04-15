@@ -3,6 +3,32 @@ include TimeArithmetic
 
 class RouteSolver
   
+  def initialize(input_file_path)
+    File.open(input_file_path) do |f|
+      @schedules = schedules(f, gather_indices(f))
+    end
+  end
+    
+  def solve(origin, destination)
+    routes = @schedules.map {|sch| routes_between(sch, origin, destination)} 
+    @results = routes.map do |route| 
+      cheapest = lowest_by(:price, route)
+      shortest = lowest_by(:duration, route) 
+      results = cheapest + shortest
+    end
+  end
+    
+  def print(output_file_path)
+    File.open(output_file_path, 'w') do |f|
+      @results.each do |res|
+        res.each do |route|
+          f.write route.to_s
+        end
+        f.write "\n"
+      end
+    end
+  end
+  
   class Flight
     attr_accessor :from, :to, :dep, :arr, :prc
     
@@ -61,25 +87,14 @@ class RouteSolver
     end
     
     def prc
-      price.modulo(1).eql?(0.0)? price.to_s + '0' : price 
+      price.modulo(1).eql?(0.0)? price.to_s + '0' : price.to_s 
     end
     
     def to_s
       "#{@flights.first.dep} #{@flights.last.arr} #{prc}\n"
     end
   end
-    
-  #TODO  
-  def initialize(file)
-  end
-  
-  #TODO
-  def foo(file_path) 
-    File.open(file_path) do |f|
-      schedules(f, gather_indices(f))
-    end
-  end
-  
+          
   #private
   
   def gather_indices(file)
