@@ -64,37 +64,6 @@ class Graph
     node_ids.map {|id| @nodes[id.split('_')[1]]}
   end
   
-=begin
-  TODO: 
-  a = Node.new 'A'
-  b = Node.new 'B'
-  ab = @graphs[0].adjacent?(a, b)
-  
-  So this will return an edge with the id composed of these two new nodes' ids.
-  This is a bug - the graph does NOT contain these two nodes, but two other nodes 
-  with the same names. So the edge returned will not be connected in any way to the 
-  two nodes it was originally constructed with, because there's a disconnect: ids are based
-  on primitive values, but what is returned are objects. For correct computation of equality,
-  primitive values need to be checked against primitive values and objects against objects. 
-  
-  This just goes to show that everything, even in the simplest (and the most complex) program, 
-  utlimately centers around:
-  
-  1) Data representation - primitive or object
-  2) Object identtity and equality
-  3) Basic data structures. Everything falls back on these
-  4) "Things" and their properties, ie key / value pairs
-  
-In a complex program, this is merely hidden under layer upon layer of abstractions. But that is the base layer
-every program ultimately functions on. Now what's cool about Lisp and data-driven, functional programming
-(Christophe Grand's term for it is "relational-oriented programming" - http://clj-me.cgrand.net/2011/08/19/conways-game-of-life/) 
-is that this layer is brought from the bottom level to the surface, and expressed in a very transparent, 
-explicit, literal, & simplified way. As a result, many unnecessary levels of abstraction are stripped away
-and only the essentials (data and functions) remain. Objects are replaced by simple recorrds or containers 
-(essentially, groupings of properties and their values, key-value pairs). This is why JavaScript objects are
-so similar to Hash Tables.
-=end  
-
   def adjacent?(from_node, to_node)
     id = [from_node.id, "_", to_node.id].join
     @edges[id]
@@ -413,87 +382,93 @@ end
 
 
 =begin
-[
-  [
-    [#<Edge:0x007fc962a05428 @to="B", @from="A", @id="a_b", @weight=1>, 
-     #<Edge:0x007fc962a04ac8 @to="C", @from="B", @id="b_c", @weight=2>, 
-     #<Edge:0x007fc962a046b8 @to="D", @from="C", @id="c_d", @weight=3>
-    ], 
-    [6]
-  ], 
+  This graph framework has a design flaw. Consider this:
+   
+  a = Node.new 'A'
+  b = Node.new 'B'
+  ab = @g.adjacent?(a, b)
   
-  [
-    [#<Edge:0x007fc962a04fa0 @to="C", @from="A", @id="a_c", @weight=5>, 
-     #<Edge:0x007fc962a046b8 @to="D", @from="C", @id="c_d", @weight=3>
-    ], 
-    [8]
-  ]
-]
+  This will return an edge (ab) with the id composed of these two new nodes' ids.
+  This is a bug - the graph does NOT contain these two nodes, but two other nodes 
+  with the same names. So the edge returned will not be connected in any way to the 
+  two nodes it was originally constructed with, because the design uses contradicting 
+  principles: ids are based on primitive values, while functions take objects as parameters. 
+  For correct behavior, one would need to introduce object equality into this, and also 
+  think about whether passing objects to functions is really a good idea.
+  
+  (The real reason for this problem even arising is that this program was designed framework-first.
+  Frameworks are best extracted, not designed. A program of this nature needs to be driven by
+  a realistic use case, f ex. someone needs to query the graph for a person, that person has a name, 
+  an address, etc. Real-world usage drives functionality. A client program that uses the services / API
+  of this program is useful as a formalization of this contract (what methods do we need? What values 
+  do they accept? Etc.) This is outside-in program design).
+  
+  This just goes to show that even in the simplest non-trivial program, everything 
+  ultimately is resolved at the level of the basics:
+  
+  1) Data representation - primitive or object;
+  2) Object identity and equality;
+  3) Basic data structures: lists, hashes, sets. Nearly every object contains some or all of these;
+  4) "Things" and their properties, ie key / value pairs.
+  
+  In a complex program, these core aspects are merely hidden under layer upon layer of abstraction. 
+  But that is the base layer every program ultimately functions on. Now what's cool about Lisp and 
+  data-driven, functional programming (Christophe Grand's term for it is "relational-oriented programming" 
+  - http://clj-me.cgrand.net/2011/08/19/conways-game-of-life/) is that this layer is brought from the 
+  bottom level to the surface, and expressed in a very transparent, explicit, literal way. As a result, 
+  programs and programming are simplified. Many unnecessary levels of abstraction are thrown away
+  and only the essentials (data and functions) remain. Objects are replaced by simple records / containers 
+  (essentially, groupings of properties and their values, key-value pairs). This is why JavaScript objects
+  are so similar to Hash Tables.
 
-=end
+  So how does one program in Ruby in this way? When it makes sense:
 
-=begin
-A -> B
-A -> C
-B -> C
+  1) Use common data structures (list, vector, hash, set) instead of objects; 
+  2) Convert objects with behaviour, state, and identity into simple records (containers of properties and their values);
+  3) Convert data structures to data structure literals (present in Ruby, Python, Clojure);
+  4) Use primitive types / data literals (strings, integers, symbols) as substitutes for objects.
 
-(A(B, C), B(C))
+  Two additional principles allow one to take this further and design succinct data structures:
+  
+  5) Pre-process data structures by running stringifying algorithms on their data for future constant-time lookup (like 
+     calculating all paths in a graph and storing each path as a sequence of characters); 
+  6) Use string scanning algorithms to process stringified data in linear time.
 
-AB
-AC
-BC
-or
-(AB, AC, BC)
+  Composing object litarals is also possible _just_ using strings / standard library classes, 
+  like Brian Marick explains in this screencast: http://vimeo.com/34522837
 
-=>
-
-AB
-ABC
-AC
-BC
-
-When it makes sense:
-
-Use common data structures (list, hash, set) instead of objects 
-Convert objects with behaviour, state, and identity into simple records (containers of properties and their values)
-Convert data structures to data structure literals (as in Ruby, Python, Clojure)u
-Use primitive types / data literals (strings, integers, symbols) as substitutes for objects
-
-These two belong to the theme of succinct DSs:
-Pre-process data structures by running stringifying algorithms on them for future constant-time lookup (like 
-calculating all paths in a graph and storing each path as a string of chars) 
-Use string scanning algorithms to process stringified data in linear time.
-
-Composing object litarals also possible JUST using strings / standard library classes, 
-like Brian Marick explains in this screencast: http://vimeo.com/34522837
-
-ruby-1.9.3-p0 :016 > h = {"a" => String.new}
- => {"a"=>""} 
-ruby-1.9.3-p0 :017 > h = {"a" => String.new('A')}
- => {"a"=>"A"}
-Then you just define an object that inherits from Hash, instead of the default Object. 
+  ruby-1.9.3-p0 :016 > h = {"a" => String.new}
+    => {"a"=>""} 
+  ruby-1.9.3-p0 :017 > h = {"a" => String.new('A')}
+    => {"a"=>"A"}
+  
+ Then when you need methods to operate on this, you just define an object that inherits from Hash, 
+ instead of the default Object, and create methods on that. 
  
-Question: when adding a node successfully, you get the node as return value. Same when yu delete a node.
-When doing the above unsuccessfully, Ruby gives you nil back:
-h = {}
- => {} 
-h.store("a", String.new('A'))
- => "A" 
-h.store("b", String.new('B'))
- => "B" 
-h.delete("b")
- => "B" 
-h
- => {"a"=>"A"} 
-h.delete("c")
- => nil 
+ On "falsey" return values:
+ 
+ When you add a node successfully, you get the node as return value. Same when deleting a node.
+ This is the Ruby way. When doing the above unsuccessfully, Ruby gives you nil back: 
+ 
+  h = {}
+    => {} 
+  h.store("a", String.new('A'))
+    => "A" 
+  h.store("b", String.new('B'))
+    => "B" 
+  h.delete("b")
+    => "B" 
+  h
+    => {"a"=>"A"} 
+  h.delete("c")
+    => nil 
 
-This is because the opposite of an non-nil object is the nil object. (Ruby is OO).
-So now the question: when designing own data structures, do you return nil or false
-when defining the methods? Maybe Nil Object as advocated in Confident Code by Avdi:
-http://www.youtube.com/watch?v=T8J0j2xJFgQ
+  This is because the opposite of an non-nil object is the nil object. (Ruby is OO).
+  So now the question: when designing your own data structures, do you return nil or false
+  when defining the methods? Or some special object (maybe Nil Object as advocated in 
+  Confident Code by Avdi: http://www.youtube.com/watch?v=T8J0j2xJFgQ).
 
-Look at my add_edge(from_node, to_node) method.
+  Look at the add_edge(from_node, to_node) method above.
 
 =end
 
