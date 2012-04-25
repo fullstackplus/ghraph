@@ -1,5 +1,5 @@
-require './route_solver'
+require './graph_spec'
 
-solver = RouteSolver.new('files/sample-input.txt')
-solver.solve('A', 'Z')
-solver.print('files/test-output.txt')
+g = Graph.new
+g.add_edges('AB', 'BC', 'AC')
+g.cost_of_path('A', 'C', :price)

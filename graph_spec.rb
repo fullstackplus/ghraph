@@ -69,14 +69,32 @@ class Graph
   a = Node.new 'A'
   b = Node.new 'B'
   ab = @graphs[0].adjacent?(a, b)
-  This is a bug - the graph does NOT contain these two nodes, but nodes with the same names
   
-  Everything, even in the simplest program, centers around:
+  So this will return an edge with the id composed of these two new nodes' ids.
+  This is a bug - the graph does NOT contain these two nodes, but two other nodes 
+  with the same names. So the edge returned will not be connected in any way to the 
+  two nodes it was originally constructed with, because there's a disconnect: ids are based
+  on primitive values, but what is returned are objects. For correct computation of equality,
+  primitive values need to be checked against primitive values and objects against objects. 
+  
+  This just goes to show that everything, even in the simplest (and the most complex) program, 
+  utlimately centers around:
+  
   1) Data representation - primitive or object
   2) Object identtity and equality
   3) Basic data structures. Everything falls back on these
-  4) "Things" and their properties
+  4) "Things" and their properties, ie key / value pairs
+  
+In a complex program, this is merely hidden under layer upon layer of abstractions. But that is the base layer
+every program ultimately functions on. Now what's cool about Lisp and data-driven, functional programming
+(Christophe Grand's term for it is "relational-oriented programming" - http://clj-me.cgrand.net/2011/08/19/conways-game-of-life/) 
+is that this layer is brought from the bottom level to the surface, and expressed in a very transparent, 
+explicit, literal, & simplified way. As a result, many unnecessary levels of abstraction are stripped away
+and only the essentials (data and functions) remain. Objects are replaced by simple recorrds or containers 
+(essentially, groupings of properties and their values, key-value pairs). This is why JavaScript objects are
+so similar to Hash Tables.
 =end  
+
   def adjacent?(from_node, to_node)
     id = [from_node.id, "_", to_node.id].join
     @edges[id]
@@ -434,15 +452,21 @@ ABC
 AC
 BC
 
-Convert objects / records / containers to common data structures (list, hash, set)
-Convert data structures to data structure literals (as in Ruby, Python, Clojure)
-Convert complex types / data to simple types / data literals (strings, integers, symbols)
-Pre-process data structures by running stringifying algorithms on them for future constant-time lookup
-(like calculating all paths in a graph and storing each path as a string of chars)
+When it makes sense:
+
+Use common data structures (list, hash, set) instead of objects 
+Convert objects with behaviour, state, and identity into simple records (containers of properties and their values)
+Convert data structures to data structure literals (as in Ruby, Python, Clojure)u
+Use primitive types / data literals (strings, integers, symbols) as substitutes for objects
+
+These two belong to the theme of succinct DSs:
+Pre-process data structures by running stringifying algorithms on them for future constant-time lookup (like 
+calculating all paths in a graph and storing each path as a string of chars) 
 Use string scanning algorithms to process stringified data in linear time.
 
 Composing object litarals also possible JUST using strings / standard library classes, 
-like Brian Marick in that screencast:
+like Brian Marick explains in this screencast: http://vimeo.com/34522837
+
 ruby-1.9.3-p0 :016 > h = {"a" => String.new}
  => {"a"=>""} 
 ruby-1.9.3-p0 :017 > h = {"a" => String.new('A')}
@@ -466,7 +490,10 @@ h.delete("c")
 
 This is because the opposite of an non-nil object is the nil object. (Ruby is OO).
 So now the question: when designing own data structures, do you return nil or false
-when defining the methods? Look at my add_edge(from_node, to_node) method.
+when defining the methods? Maybe Nil Object as advocated in Confident Code by Avdi:
+http://www.youtube.com/watch?v=T8J0j2xJFgQ
+
+Look at my add_edge(from_node, to_node) method.
 
 =end
 
